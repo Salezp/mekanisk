@@ -1,0 +1,303 @@
+<title>Mekanisk 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one workshop bench — 3D stage on top, the mechanism's spec card below, single column on phones, stage+card side by side on wide screens */
+:root{
+  --bg:#0e1217; --panel:#151b22; --line:#27313c; --fg:#e7ecf1; --muted:#93a1af; --accent:#e8743b; --accent-ink:#1a0d06;
+  --f-display:"Chakra Petch","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:16px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:14px 32px}
+.wrap{max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mark{font-family:var(--f-display);font-weight:700;font-size:26px;letter-spacing:.04em;text-transform:uppercase;display:flex;align-items:baseline;gap:8px}
+.mark small{font-family:var(--f-mono);font-weight:400;font-size:12px;color:var(--accent);letter-spacing:.08em}
+.lang{display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden}
+.lang button{all:unset;cursor:pointer;font-family:var(--f-mono);font-size:13px;padding:6px 12px;color:var(--muted)}
+.lang button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.chips{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent);padding-right:40px}
+.chip{all:unset;cursor:pointer;white-space:nowrap;font-family:var(--f-display);font-weight:500;font-size:15px;letter-spacing:.03em;padding:8px 14px;border:1px solid var(--line);border-radius:6px;color:var(--muted)}
+.chip[aria-pressed="true"]{border-color:var(--accent);color:var(--fg);background:color-mix(in srgb,var(--accent) 14%,transparent)}
+.chip:focus-visible,.lang button:focus-visible,.ctl:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.bench{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@media(min-width:900px){.bench{grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);align-items:start}}
+.stage{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;height:min(68vh,620px);min-height:360px;background:#0d1117}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+.stage canvas:active{cursor:grabbing}
+.hint{position:absolute;left:12px;bottom:10px;font-family:var(--f-mono);font-size:12px;color:var(--muted);background:color-mix(in srgb,var(--bg) 70%,transparent);padding:4px 8px;border-radius:4px;pointer-events:none}
+.card{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card h1{font-family:var(--f-display);font-weight:700;font-size:clamp(30px,6vw,44px);line-height:1.05;margin:0;text-wrap:balance;letter-spacing:.01em}
+.card p{margin:0;max-width:62ch}
+.spec{font-family:var(--f-mono);font-size:13px;color:var(--accent);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding-block:10px;font-variant-numeric:tabular-nums}
+.use{color:var(--muted)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:14px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:0}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.ctl{all:unset;cursor:pointer;font-family:var(--f-mono);font-size:13px;padding:8px 14px;border:1px solid var(--line);border-radius:6px;color:var(--fg)}
+.ctl.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.speed{display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:13px;color:var(--muted);flex:1;min-width:180px}
+.speed input{flex:1;accent-color:var(--accent)}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="mark">Mekanisk <small>3D</small></div>
+    <div class="lang" role="group" aria-label="Språk / Idioma">
+      <button id="l-sv" aria-pressed="true">SV</button>
+      <button id="l-es" aria-pressed="false">ES</button>
+    </div>
+  </header>
+  <nav class="chips" id="chips" aria-label="Mekanismer"></nav>
+  <div class="bench">
+    <div class="stage" id="stage"><canvas id="cv"></canvas><div class="hint" id="hint">Dra för att vrida · nyp för att zooma</div></div>
+    <section class="card">
+      <h1 id="m-name">Planetväxel</h1>
+      <p id="m-desc">Solhjulet i mitten driver tre planethjul som rullar runt inne i en fast ring.</p>
+      <div class="spec" id="m-spec">Sol 18 kuggar · Planeter 9 · Ring 36 · Utväxling 1 : 3</div>
+      <div class="legend" id="m-legend"></div>
+      <p class="use" id="m-use"></p>
+      <div class="controls">
+        <button class="ctl primary" id="play">Paus</button>
+        <button class="ctl" id="reset">Återställ vy</button>
+        <label class="speed"><span id="sp-l">Fart</span><input type="range" id="speed" min="0.2" max="3" step="0.1" value="1"><span id="sp-o">1.0×</span></label>
+      </div>
+    </section>
+  </div>
+  <footer id="foot">Fler mekanismer kommer snart.</footer>
+</div>
+
+<script src="three.min.js"></script>
+<script src="mechs.js"></script>
+<script>
+const TXT={
+ sv:{hint:'Dra för att vrida · nyp för att zooma',pause:'Paus',play:'Spela',reset:'Återställ vy',speed:'Fart',foot:'Fler mekanismer kommer snart.'},
+ es:{hint:'Arrastra para girar · pellizca para acercar',pause:'Pausa',play:'Reproducir',reset:'Restablecer vista',speed:'Velocidad',foot:'Pronto habrá más mecanismos.'}
+};
+const INFO={
+ planet:{sv:{n:'Planetväxel',d:'Solhjulet i mitten driver tre planethjul som rullar runt inne i en fast ring. Bäraren som håller planeterna snurrar tre gånger långsammare än solhjulet.',s:'Sol 18 kuggar · Planeter 9 · Ring 36 · Utväxling 1 : 3',u:'Finns i bilens automatlåda, cykelns navväxel och vindkraftverk.',l:['Solhjul','Planethjul','Ring','Bärare']},
+         es:{n:'Engranaje planetario',d:'El engranaje solar del centro mueve tres planetas que ruedan dentro de una corona fija. El portaplanetas gira tres veces más lento que el sol.',s:'Sol 18 dientes · Planetas 9 · Corona 36 · Relación 1 : 3',u:'Se usa en cajas de cambios automáticas, bujes de bicicleta y aerogeneradores.',l:['Sol','Planetas','Corona','Portaplanetas']},c:['#E8743B','#4C9BE8','#9aa0a6','#2BB673']},
+ strandbeest:{sv:{n:'Strandbeest',d:'Konstnären Theo Jansen bygger gående maskiner som drivs av vinden. Varje ben är en länkmekanism där en enda vev ger en mjuk gångrörelse.',s:'Vev 15 · 11 stänger per ben · 8 ben på en axel',u:'Foten glider nästan helt plant längs marken och lyfts sedan i en båge.',l:['Stänger','Trianglar','Vev','Fötter']},
+         es:{n:'Strandbeest',d:'El artista Theo Jansen construye máquinas que caminan impulsadas por el viento. Cada pata es un mecanismo de barras donde una sola manivela produce un paso suave.',s:'Manivela 15 · 11 barras por pata · 8 patas en un eje',u:'El pie se desliza casi plano sobre el suelo y luego se levanta en un arco.',l:['Barras','Triángulos','Manivela','Pies']},c:['#4C9BE8','#2BB673','#E8743B','#F2B53A']},
+ geneve:{sv:{n:'Genèvehjul',d:'Drivhjulet snurrar jämnt. Varje varv griper tappen in i ett spår och vrider hjulet ett kvarts varv. Sedan låser den gröna skivan hjulet helt stilla.',s:'4 spår · 90° per steg · i rörelse 1/4 av varvet',u:'Gav filmprojektorer en stillastående bildruta åt gången. Kallas också maltesiskt kors.',l:['Drivhjul med tapp','Genèvehjul','Låsskiva']},
+         es:{n:'Rueda de Ginebra',d:'La rueda motriz gira de forma continua. En cada vuelta el perno entra en una ranura y gira la rueda un cuarto de vuelta. Luego el disco verde la bloquea.',s:'4 ranuras · 90° por paso · en movimiento 1/4 de la vuelta',u:'Permitía a los proyectores de cine detener cada fotograma. También se llama cruz de Malta.',l:['Rueda motriz con perno','Rueda de Ginebra','Disco de bloqueo']},c:['#E8743B','#4C9BE8','#2BB673']},
+ wankel:{sv:{n:'Wankelmotor',d:'En förbränningsmotor utan kolvar. Den trekantiga rotorn snurrar i ett ovalt hus, och de tre kamrarna suger in, pressar ihop, tänds och blåser ut.',s:'Rotor 1 varv = axel 3 varv · kugghjul 24 : 16',u:'Uppfunnen av Felix Wankel. Mest känd från Mazda RX-7 och RX-8.',l:['Motorhus','Rotor','Excenteraxel','Tändning']},
+         es:{n:'Motor Wankel',d:'Un motor de combustión sin pistones. El rotor triangular gira dentro de una carcasa ovalada y sus tres cámaras admiten, comprimen, explotan y expulsan.',s:'1 vuelta del rotor = 3 del eje · engranajes 24 : 16',u:'Inventado por Felix Wankel. Famoso por el Mazda RX-7 y RX-8.',l:['Carcasa','Rotor','Eje excéntrico','Encendido']},c:['#9aa0a6','#4C9BE8','#E8743B','#F2B53A']}
+};
+const ORDER=['planet','strandbeest','geneve','wankel'];
+
+// ---------- renderer + shared helpers ----------
+const cv=document.getElementById('cv'),stage=document.getElementById('stage');
+const R=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+R.setPixelRatio(Math.min(window.devicePixelRatio||1,2));R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=1.05;R.outputColorSpace=THREE.SRGBColorSpace;
+const envS=new THREE.Scene();envS.background=new THREE.Color(0x1a1f2b);
+[[0,40,0,30,30,0xffffff],[30,10,10,20,8,0xfff1d6],[-30,15,-10,24,10,0xd6e6ff],[0,5,35,40,6,0x8899aa],[0,-30,0,60,60,0x222831]].forEach(([x,y,z,w,h,c])=>{const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:c,side:THREE.DoubleSide}));m.position.set(x,y,z);m.lookAt(0,0,0);envS.add(m)});
+const envTex=new THREE.PMREMGenerator(R).fromScene(envS,0.04).texture;
+const cam=new THREE.PerspectiveCamera(35,1,1,5000);
+function baseScene(bg,box){const sc=new THREE.Scene();sc.background=new THREE.Color(bg);sc.fog=new THREE.Fog(bg,1200,3000);sc.environment=envTex;
+ sc.add(new THREE.HemisphereLight(0xbfd4ff,0x1a1410,0.35));
+ const key=new THREE.DirectionalLight(0xffffff,2.2);key.position.set(220,420,260);key.castShadow=true;key.shadow.mapSize.set(1024,1024);
+ Object.assign(key.shadow.camera,{left:-box,right:box,top:box,bottom:-box,near:50,far:2000});key.shadow.camera.updateProjectionMatrix();key.shadow.bias=-0.0004;sc.add(key);
+ const rim=new THREE.DirectionalLight(0x9fc3ff,0.9);rim.position.set(-300,150,-250);sc.add(rim);return{sc,key}}
+function addGround(sc,y){const g=new THREE.Mesh(new THREE.CircleGeometry(1400,96),new THREE.MeshStandardMaterial({color:0x161b22,roughness:0.9,metalness:0}));g.rotation.x=-Math.PI/2;g.position.y=y;g.receiveShadow=true;sc.add(g);return g}
+function pts(r,m,Z,internal,ph){ph=ph||0;const p=2*Math.PI/Z,rt=internal?r-m:r+m,rr=internal?r+1.15*m:r-1.15*m,o=[];
+ for(let i=0;i<Z;i++){const a=ph+i*p;[[rr,-0.5],[rr,-0.30],[r-(internal?-0.1:0.1)*m,-0.22],[rt,-0.12],[rt,0.12],[r-(internal?-0.1:0.1)*m,0.22],[rr,0.30]].forEach(q=>{const ang=a+q[1]*p;o.push(new THREE.Vector2(q[0]*Math.cos(ang),q[0]*Math.sin(ang)))})}return o}
+function holeC(r){const h=new THREE.Path();h.absarc(0,0,r,0,Math.PI*2,true);return h}
+function ext(shape,d,bev){bev=bev===undefined?0.8:bev;const g=new THREE.ExtrudeGeometry(shape,{depth:d,bevelEnabled:bev>0,bevelThickness:bev,bevelSize:bev*0.8,bevelSegments:2,curveSegments:48});g.translate(0,0,-d/2);g.computeVertexNormals();return g}
+const mat=(c,rough=0.32,metal=0.85)=>new THREE.MeshStandardMaterial({color:c,metalness:metal,roughness:rough});
+function sh(m){m.castShadow=true;m.receiveShadow=true;return m}
+function cyl(r,len,c,rough,metal){return sh(new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,36),mat(c,rough,metal)))}
+function bar(w,d,c){return sh(new THREE.Mesh(new THREE.BoxGeometry(1,w,d),mat(c,0.35,0.6)))}
+function setBar(m,a,b,z){const dx=b.x-a.x,dy=b.y-a.y;m.scale.x=Math.hypot(dx,dy);m.position.set((a.x+b.x)/2,(a.y+b.y)/2,z);m.rotation.z=Math.atan2(dy,dx)}
+
+// ---------- mechanisms ----------
+const BUILD={};
+BUILD.planet=()=>{const {sc}=baseScene(0x0d1117,200);addGround(sc,-24);
+ const G=new THREE.Group();sc.add(G);G.rotation.x=-Math.PI/2;
+ const m=4.5,Zs=18,Zp=9,Zr=36,rs=m*Zs/2,rp=m*Zp/2,rr=m*Zr/2,cd=rs+rp;
+ const sS=new THREE.Shape(pts(rs,m,Zs,false));sS.holes.push(holeC(6));const sun=sh(new THREE.Mesh(ext(sS,14),mat(0xE8743B)));G.add(sun);
+ const shaft=cyl(6,80,0xb8b8b8,0.2,1);shaft.rotation.x=Math.PI/2;shaft.position.z=-10;sun.add(shaft);
+ const rS=new THREE.Shape();rS.absarc(0,0,rr+3.4*m,0,Math.PI*2,false);rS.holes.push(new THREE.Path(pts(rr,m,Zr,true)));
+ const ring=sh(new THREE.Mesh(ext(rS,14),mat(0x9aa0a6,0.38,0.9)));ring.rotation.z=Math.PI/36;G.add(ring);
+ const base=sh(new THREE.Mesh(new THREE.CylinderGeometry(rr+3.4*m+6,rr+3.4*m+10,8,96),mat(0x30363d,0.6,0.5)));base.rotation.x=Math.PI/2;base.position.z=-14;G.add(base);
+ const pS=new THREE.Shape(pts(rp,m,Zp,false));pS.holes.push(holeC(4.5));const pg=ext(pS,14);
+ const planets=[];for(let k=0;k<3;k++){const p=sh(new THREE.Mesh(pg,mat(0x4C9BE8)));p.userData.a0=k*2*Math.PI/3;G.add(p);planets.push(p)}
+ const car=new THREE.Group();G.add(car);
+ for(let k=0;k<3;k++){const a=k*2*Math.PI/3;const st=new THREE.Shape();st.absarc(0,0,7.5,Math.PI/2,Math.PI*1.5,false);st.absarc(cd,0,10.5,-Math.PI/2,Math.PI/2,false);st.closePath();
+  const arm=sh(new THREE.Mesh(new THREE.ExtrudeGeometry(st,{depth:5,bevelEnabled:true,bevelThickness:0.8,bevelSize:0.8,bevelSegments:2,curveSegments:32}),mat(0x2BB673,0.3,0.7)));arm.rotation.z=a;arm.position.z=11;car.add(arm);
+  const pin=cyl(4.3,26,0xe0e0e0,0.25,0.6);pin.rotation.x=Math.PI/2;pin.position.set(cd*Math.cos(a),cd*Math.sin(a),3);car.add(pin);
+  const cap=cyl(7,3,0xe0e0e0,0.25,0.6);cap.rotation.x=Math.PI/2;cap.position.set(cd*Math.cos(a),cd*Math.sin(a),17);car.add(cap)}
+ const hub=cyl(13,6,0x2BB673,0.3,0.7);hub.rotation.x=Math.PI/2;hub.position.z=13.5;car.add(hub);
+ const outS=cyl(9,40,0x2BB673,0.3,0.7);outS.rotation.x=Math.PI/2;outS.position.z=34;car.add(outS);
+ const mk=sh(new THREE.Mesh(new THREE.BoxGeometry(14,3,2),mat(0xffffff,0.3,0.2)));mk.position.set(4,0,54.5);car.add(mk);
+ const ws=1.4,wc=ws*Zs/(Zs+Zr),wp=wc+(ws-wc)*(-Zs/Zp);
+ return{sc,target:new THREE.Vector3(0,0,0),dist:520,elev:0.85,az:0.6,update(t){sun.rotation.z=ws*t;car.rotation.z=wc*t;
+  planets.forEach(p=>{const a0=p.userData.a0,a=a0+wc*t;p.position.set(cd*Math.cos(a),cd*Math.sin(a),0);p.rotation.z=a0+Math.PI-Math.PI/Zp+wp*t})}}};
+
+BUILD.strandbeest=()=>{const {sc,key}=baseScene(0x1b2433,380);key.position.set(300,600,400);
+ const S=2.2;
+ function inter(p0,r0,p1,r1){const dx=p1[0]-p0[0],dy=p1[1]-p0[1],d=Math.hypot(dx,dy);const a=(r0*r0-r1*r1+d*d)/(2*d);const h=Math.sqrt(Math.max(0,r0*r0-a*a));const mx=p0[0]+a*dx/d,my=p0[1]+a*dy/d;return[[mx+h*dy/d,my-h*dx/d],[mx-h*dy/d,my+h*dx/d]]}
+ function leg(th){const O=[0,0],B=[-38,-7.8],A=[15*Math.cos(th),15*Math.sin(th)];
+  let s=inter(A,50,B,41.5);const C=s[0][1]>s[1][1]?s[0]:s[1];s=inter(A,61.9,B,39.3);const D=s[0][1]<s[1][1]?s[0]:s[1];
+  s=inter(B,40.1,C,55.8);const E=s[0][0]<s[1][0]?s[0]:s[1];s=inter(D,36.7,E,39.4);const F=s[0][0]<s[1][0]?s[0]:s[1];
+  s=inter(D,49,F,65.7);const G=s[0][1]<s[1][1]?s[0]:s[1];return{O,A,B,C,D,E,F,G}}
+ const om=2.2;let ymin=1e9;const samp=[];for(let i=0;i<720;i++){const g=leg(i/720*2*Math.PI).G;samp.push(g);ymin=Math.min(ymin,g[1])}
+ let vs=0,n=0;for(let i=0;i<720;i++){const a=samp[i],b=samp[(i+1)%720];if(a[1]<ymin+0.8&&b[1]<ymin+0.8){vs+=b[0]-a[0];n++}}
+ const vGround=(n?vs/n/(2*Math.PI/720):0)*om*S;
+ const tc=document.createElement('canvas');tc.width=tc.height=256;const tx=tc.getContext('2d');tx.fillStyle='#c8b48a';tx.fillRect(0,0,256,256);
+ tx.strokeStyle='#a8946a';tx.lineWidth=6;tx.beginPath();tx.moveTo(0,0);tx.lineTo(0,256);tx.moveTo(0,0);tx.lineTo(256,0);tx.stroke();
+ for(let i=0;i<500;i++){tx.fillStyle=Math.random()<0.5?'#b9a57c':'#d6c398';tx.fillRect(Math.random()*256,Math.random()*256,3,3)}
+ const tex=new THREE.CanvasTexture(tc);tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(40,40);tex.colorSpace=THREE.SRGBColorSpace;tex.anisotropy=8;
+ const ground=new THREE.Mesh(new THREE.PlaneGeometry(3200,3200),new THREE.MeshStandardMaterial({map:tex,roughness:0.95,metalness:0}));ground.rotation.x=-Math.PI/2;ground.position.y=ymin*S-6;ground.receiveShadow=true;sc.add(ground);
+ const CL=0x4C9BE8,CT=0x2BB673,CC=0xE8743B,CF=0xF2B53A,CB=0x59606a;
+ const pairs=[0,Math.PI/2,Math.PI,3*Math.PI/2].map((ph,i)=>({ph,z:-66+i*44}));const legs=[];
+ const links=[['A','C',CL],['B','C',CT],['A','D',CL],['B','D',CL],['B','E',CT],['C','E',CT],['D','F',CT],['E','F',CL],['D','G',CT],['F','G',CT]];
+ pairs.forEach(p=>{[false,true].forEach(mir=>{const L={ph:p.ph,mir,z:p.z+(mir?9:-9),bars:[],pins:{}};
+  links.forEach(l=>{const b=bar(5,3.5,l[2]);sc.add(b);L.bars.push([b,l[0],l[1]])});
+  ['A','C','D','E','F'].forEach(k=>{const c=cyl(2.6,6,0xdedede,0.25,0.7);c.rotation.x=Math.PI/2;sc.add(c);L.pins[k]=c});
+  L.foot=sh(new THREE.Mesh(new THREE.SphereGeometry(6,20,14),mat(CF,0.4,0.3)));sc.add(L.foot);legs.push(L)});
+  p.crank=bar(7,5,CC);sc.add(p.crank)});
+ const zMin=pairs[0].z-20,zMax=pairs[3].z+20;
+ const shaft=cyl(4.5,zMax-zMin,CC,0.3,0.8);shaft.rotation.x=Math.PI/2;sc.add(shaft);
+ [-1,1].forEach(sx=>{const ax=cyl(4,zMax-zMin,CB,0.4,0.7);ax.rotation.x=Math.PI/2;ax.position.set(sx*38*S,-7.8*S,0);sc.add(ax)});
+ [zMin,zMax].forEach(z=>{const fb=bar(8,6,CB);sc.add(fb);setBar(fb,{x:-38*S-6,y:-7.8*S},{x:38*S+6,y:-7.8*S},z);
+  const u1=bar(8,6,CB);sc.add(u1);setBar(u1,{x:-38*S,y:-7.8*S},{x:0,y:0},z);const u2=bar(8,6,CB);sc.add(u2);setBar(u2,{x:38*S,y:-7.8*S},{x:0,y:0},z)});
+ const V=(p,mir)=>({x:(mir?-p[0]:p[0])*S,y:p[1]*S});
+ return{sc,target:new THREE.Vector3(0,-80,0),dist:720,elev:0.3,az:0.7,update(t){const th0=om*t;
+  pairs.forEach(p=>{const th=th0+p.ph;setBar(p.crank,{x:0,y:0},{x:15*Math.cos(th)*S,y:15*Math.sin(th)*S},p.z)});
+  legs.forEach(L=>{const th=th0+L.ph;const P=L.mir?leg(Math.PI-th):leg(th);
+   L.bars.forEach(([b,a,c])=>setBar(b,V(P[a],L.mir),V(P[c],L.mir),L.z));
+   for(const k in L.pins){const q=V(P[k],L.mir);L.pins[k].position.set(q.x,q.y,L.z)}
+   const g=V(P.G,L.mir);L.foot.position.set(g.x,g.y,L.z)});
+  tex.offset.x=-(vGround*t)/80}}};
+
+BUILD.geneve=()=>{const {sc}=baseScene(0x0d1117,220);addGround(sc,-30);
+ const G=new THREE.Group();sc.add(G);G.rotation.x=-Math.PI/2;
+ const Rp=70,C=Rp*Math.SQRT2,Rw=Math.sqrt(C*C-Rp*Rp),hw=6.5,rd=21,rlock=45,rl=47;
+ function wheelShape(){const o=[];const push=(x,y)=>o.push(new THREE.Vector2(x,y));const as=Math.asin(hw/Rw),dl=Math.acos((Rw*Rw+C*C-rl*rl)/(2*Rw*C));
+  for(let k=0;k<4;k++){const s=k*Math.PI/2,b=s+Math.PI/4,s2=s+Math.PI/2,N=14;
+   for(let i=0;i<=N;i++){const a=s+as+(b-dl-s-as)*i/N;push(Rw*Math.cos(a),Rw*Math.sin(a))}
+   const cc=[C*Math.cos(b),C*Math.sin(b)],p1=[Rw*Math.cos(b-dl),Rw*Math.sin(b-dl)],p2=[Rw*Math.cos(b+dl),Rw*Math.sin(b+dl)];
+   let a1=Math.atan2(p1[1]-cc[1],p1[0]-cc[0]),a2=Math.atan2(p2[1]-cc[1],p2[0]-cc[0]),d=a2-a1;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+   for(let i=1;i<24;i++){const a=a1+d*i/24;push(cc[0]+rl*Math.cos(a),cc[1]+rl*Math.sin(a))}
+   for(let i=0;i<=N;i++){const a=b+dl+(s2-as-b-dl)*i/N;push(Rw*Math.cos(a),Rw*Math.sin(a))}
+   const u=[Math.cos(s2),Math.sin(s2)],nn=[-Math.sin(s2),Math.cos(s2)],L=Math.sqrt(Rw*Rw-hw*hw);
+   push(u[0]*L-nn[0]*hw,u[1]*L-nn[1]*hw);push(u[0]*rd-nn[0]*hw,u[1]*rd-nn[1]*hw);
+   for(let i=1;i<16;i++){const a=s2-Math.PI/2-Math.PI*i/16;push(u[0]*rd+hw*Math.cos(a),u[1]*rd+hw*Math.sin(a))}
+   push(u[0]*rd+nn[0]*hw,u[1]*rd+nn[1]*hw);push(u[0]*L+nn[0]*hw,u[1]*L+nn[1]*hw)}
+  const sp=new THREE.Shape(o);sp.holes.push(holeC(7));return sp}
+ const wheel=sh(new THREE.Mesh(ext(wheelShape(),12),mat(0x4C9BE8,0.3,0.8)));wheel.position.set(C/2,0,0);G.add(wheel);
+ const wS=cyl(7,60,0xcfd3d8,0.2,1);wS.rotation.x=Math.PI/2;wS.position.set(C/2,0,-4);G.add(wS);
+ const ptr=new THREE.Group();ptr.position.set(C/2,0,27);G.add(ptr);const ph=cyl(11,6,0x4C9BE8,0.3,0.8);ph.rotation.x=Math.PI/2;ptr.add(ph);
+ const pa=sh(new THREE.Mesh(new THREE.BoxGeometry(46,6,4),mat(0xffffff,0.35,0.2)));pa.position.x=23;ptr.add(pa);
+ const lockS=(()=>{const Rr=Rw+2,xc=(rlock*rlock+C*C-Rr*Rr)/(2*C),al=Math.acos(xc/rlock),o=[];
+  for(let i=0;i<=60;i++){const a=al+(2*Math.PI-2*al)*i/60;o.push(new THREE.Vector2(rlock*Math.cos(a),rlock*Math.sin(a)))}
+  const b0=Math.atan2(-rlock*Math.sin(al),rlock*Math.cos(al)-C),b1=Math.atan2(rlock*Math.sin(al),rlock*Math.cos(al)-C),a0=b0<0?b0+2*Math.PI:b0;
+  for(let i=1;i<30;i++){const a=a0+(b1-a0)*i/30;o.push(new THREE.Vector2(C+Rr*Math.cos(a),Rr*Math.sin(a)))}
+  const sp=new THREE.Shape(o);sp.holes.push(holeC(6));return sp})();
+ const lock=sh(new THREE.Mesh(ext(lockS,12),mat(0x2BB673,0.3,0.7)));lock.position.set(-C/2,0,0);G.add(lock);
+ const drv=new THREE.Group();drv.position.set(-C/2,0,0);G.add(drv);
+ const armS=new THREE.Shape();armS.absarc(0,0,16,Math.PI/2,Math.PI*1.5,false);armS.absarc(Rp,0,10,-Math.PI/2,Math.PI/2,false);armS.closePath();armS.holes.push(holeC(6));
+ const arm=sh(new THREE.Mesh(ext(armS,6),mat(0xE8743B,0.3,0.8)));arm.position.z=-10;drv.add(arm);
+ const pin=cyl(5,18,0xE8743B,0.25,0.9);pin.rotation.x=Math.PI/2;pin.position.set(Rp,0,-3);drv.add(pin);
+ const dS=cyl(6,40,0xcfd3d8,0.2,1);dS.rotation.x=Math.PI/2;dS.position.z=-14;drv.add(dS);
+ const base=sh(new THREE.Mesh(new THREE.BoxGeometry(2*C+130,Rw*2+60,8),mat(0x30363d,0.6,0.5)));base.position.z=-26;G.add(base);
+ const om=1.7;
+ return{sc,target:new THREE.Vector3(0,-10,0),dist:500,elev:0.9,az:-1.0,update(t){const th=om*t-Math.PI;drv.rotation.z=th;lock.rotation.z=th;
+  const k=Math.floor((th-Math.PI/4)/(2*Math.PI))+1,tm=((th%(2*Math.PI))+3*Math.PI)%(2*Math.PI)-Math.PI,P=[Rp*Math.cos(th),Rp*Math.sin(th)];let r=0;
+  if(Math.abs(tm)<Math.PI/4){let s=Math.atan2(P[1],P[0]-C);if(s>0)s-=2*Math.PI;r=s+3*Math.PI/4}
+  const rho=-k*Math.PI/2+r;wheel.rotation.z=-3*Math.PI/4+rho;ptr.rotation.z=rho}}};
+
+BUILD.wankel=()=>{const {sc,key}=baseScene(0x0d1117,220);key.position.set(250,380,500);
+ const fill=new THREE.DirectionalLight(0xffffff,1.3);fill.position.set(-60,40,600);sc.add(fill);addGround(sc,-100);
+ const Rr=60,e=9,Rh=Rr+1.6;
+ const hs=new THREE.Shape();hs.absellipse(0,0,98,84,0,Math.PI*2,false,0);const hp=[];
+ for(let i=0;i<240;i++){const th=-i/240*2*Math.PI;hp.push(new THREE.Vector2(e*Math.cos(3*th)+Rh*Math.cos(th),e*Math.sin(3*th)+Rh*Math.sin(th)))}
+ hs.holes.push(new THREE.Path(hp));sc.add(sh(new THREE.Mesh(ext(hs,32,1.2),mat(0x9aa0a6,0.42,0.85))));
+ const back=sh(new THREE.Mesh(new THREE.CylinderGeometry(1,1,6,96),mat(0x5f666e,0.5,0.8)));back.scale.set(98,1,84);back.rotation.x=Math.PI/2;back.position.z=-19;sc.add(back);
+ const feet=sh(new THREE.Mesh(new THREE.BoxGeometry(150,14,40),mat(0x5f666e,0.5,0.8)));feet.position.set(0,-93,-2);sc.add(feet);
+ const plug=new THREE.Group();plug.position.set(0,92,0);sc.add(plug);const pB=cyl(6,26,0xe8e8e8,0.3,0.2);pB.position.y=4;plug.add(pB);
+ const pH=sh(new THREE.Mesh(new THREE.CylinderGeometry(9,9,8,6),mat(0xcfd3d8,0.2,1)));pH.position.y=-6;plug.add(pH);
+ const flame=new THREE.Mesh(new THREE.SphereGeometry(1,32,16),new THREE.MeshBasicMaterial({color:0xffa53a,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+ flame.position.set(0,44,4);sc.add(flame);const fl=new THREE.PointLight(0xff9a3a,0,400,1.5);fl.position.set(0,40,30);sc.add(fl);
+ function rotorShape(){const o=[],s=7,h=Rr*Math.sqrt(3)/2,rho=(h*h+s*s)/(2*s);
+  for(let k=0;k<3;k++){const a0=2*Math.PI*k/3,a1=a0+2*Math.PI/3,mid=a0+Math.PI/3,cx=(Rr/2+s-rho)*Math.cos(mid),cy=(Rr/2+s-rho)*Math.sin(mid);
+   const b0=Math.atan2(Rr*Math.sin(a0)-cy,Rr*Math.cos(a0)-cx),b1=Math.atan2(Rr*Math.sin(a1)-cy,Rr*Math.cos(a1)-cx);let d=b1-b0;while(d>Math.PI)d-=2*Math.PI;while(d<-Math.PI)d+=2*Math.PI;
+   for(let i=0;i<40;i++){const b=b0+d*i/40;o.push(new THREE.Vector2(cx+rho*Math.cos(b),cy+rho*Math.sin(b)))}}
+  const sp=new THREE.Shape(o);sp.holes.push(new THREE.Path(pts(27,2.25,24,true,Math.PI/24).reverse()));return sp}
+ const rotor=sh(new THREE.Mesh(ext(rotorShape(),26,1),mat(0x4C9BE8,0.28,0.8)));sc.add(rotor);
+ for(let k=0;k<3;k++){const a=2*Math.PI*k/3;const seal=sh(new THREE.Mesh(new THREE.BoxGeometry(4,6,28),mat(0xf0f0f0,0.25,0.9)));seal.position.set((Rr-2)*Math.cos(a),(Rr-2)*Math.sin(a),0);seal.rotation.z=a;rotor.add(seal)}
+ const pin=sh(new THREE.Mesh(ext(new THREE.Shape(pts(18,2.25,16,false,0)),34,0.6),mat(0xb8bec6,0.3,0.9)));pin.position.z=-4;sc.add(pin);
+ const ecc=new THREE.Group();sc.add(ecc);const shf=cyl(7,90,0xE8743B,0.25,0.9);shf.rotation.x=Math.PI/2;shf.position.z=10;ecc.add(shf);
+ const lobe=cyl(15,6,0xE8743B,0.25,0.9);lobe.rotation.x=Math.PI/2;lobe.position.set(e,0,18);ecc.add(lobe);
+ const cw=sh(new THREE.Mesh(new THREE.CylinderGeometry(26,26,5,48,1,false,Math.PI*0.25,Math.PI*0.5),mat(0xE8743B,0.25,0.9)));cw.rotation.x=Math.PI/2;cw.position.set(0,0,45);ecc.add(cw);
+ const mk=sh(new THREE.Mesh(new THREE.BoxGeometry(20,3,2),mat(0xffffff,0.3,0.2)));mk.position.set(e+4,0,21.5);ecc.add(mk);
+ const wr=1.4;
+ return{sc,target:new THREE.Vector3(0,0,0),dist:530,elev:0.3,az:Math.PI/2-0.45,update(t){const phi=wr*t,psi=3*phi;
+  rotor.position.set(e*Math.cos(psi),e*Math.sin(psi),0);rotor.rotation.z=phi;ecc.rotation.z=psi;
+  const d=(((phi-Math.PI/6)%(2*Math.PI/3))+2*Math.PI/3)%(2*Math.PI/3),I=d<0.55?Math.pow(1-d/0.55,1.4):0;
+  flame.material.opacity=0.85*I;fl.intensity=5000*I;flame.scale.set(30+20*(1-I),9+5*(1-I),12)}}};
+
+// ---------- shared library mechanisms ----------
+function GROUND(s,y){return addGround(s,y)}
+Object.keys(MECH).forEach(k=>{const M=MECH[k];INFO[k]={sv:M.sv,es:M.es,c:M.c};ORDER.push(k);
+ BUILD[k]=()=>{const {sc,key}=baseScene(M.bg||0x0d1117,M.box||260);sc.children.forEach(o=>{if(o.isHemisphereLight)o.intensity=0.6});
+  const f=new THREE.DirectionalLight(0xffffff,0.6);f.position.set(-200,150,400);sc.add(f);
+  const api=M.build(sc,key);const c=M.cam;return{sc,target:new THREE.Vector3(...c.target),dist:c.dist,elev:c.elev,az:c.az,update:api.update}}});
+
+// ---------- state, camera control, UI ----------
+const built={};let cur=null,curKey='planet',lang='sv';
+let t=0,run=true,speed=1,last=performance.now();
+const view={az:0,elev:0,dist:1};
+function get(k){if(!built[k])built[k]=BUILD[k]();return built[k]}
+function aspectK(){const a=cam.aspect;return Math.min(1.15,Math.max(0.7,0.85/a))}
+function resetView(){view.az=cur.az;view.elev=cur.elev;view.dist=cur.dist*aspectK()}
+function select(k,keepHash){curKey=k;cur=get(k);resetView();render();
+ document.querySelectorAll('.chip').forEach(c=>{c.setAttribute('aria-pressed',c.dataset.k===k);if(c.dataset.k===k){const ch=document.getElementById('chips');ch.scrollLeft=c.offsetLeft-ch.clientWidth/2+c.clientWidth/2}});
+ fillText();if(!keepHash){try{history.replaceState(null,'','#'+k+(lang==='es'?'-es':''))}catch(e){}}}
+function fillText(){const I=INFO[curKey],L=I[lang],T=TXT[lang];
+ document.getElementById('m-name').textContent=L.n;document.getElementById('m-desc').textContent=L.d;
+ document.getElementById('m-spec').textContent=L.s;document.getElementById('m-use').textContent=L.u;
+ document.getElementById('m-legend').innerHTML=L.l.map((n,i)=>`<span><i style="background:${I.c[i]}"></i>${n}</span>`).join('');
+ document.getElementById('hint').textContent=T.hint;document.getElementById('play').textContent=run?T.pause:T.play;
+ document.getElementById('reset').textContent=T.reset;document.getElementById('sp-l').textContent=T.speed;document.getElementById('foot').textContent=T.foot;
+ document.documentElement.lang=lang;
+ document.querySelectorAll('.chip').forEach(c=>c.textContent=INFO[c.dataset.k][lang].n);
+ document.getElementById('l-sv').setAttribute('aria-pressed',lang==='sv');document.getElementById('l-es').setAttribute('aria-pressed',lang==='es')}
+const chips=document.getElementById('chips');
+ORDER.forEach(k=>{const b=document.createElement('button');b.className='chip';b.dataset.k=k;b.textContent=INFO[k].sv.n;b.onclick=()=>select(k);chips.appendChild(b)});
+function setLang(l){lang=l;fillText();try{history.replaceState(null,'','#'+curKey+(lang==='es'?'-es':''))}catch(e){}}
+document.getElementById('l-sv').onclick=()=>setLang('sv');document.getElementById('l-es').onclick=()=>setLang('es');
+document.getElementById('play').onclick=()=>{run=!run;fillText()};
+document.getElementById('reset').onclick=()=>{resetView();render()};
+document.getElementById('speed').oninput=e=>{speed=+e.target.value;document.getElementById('sp-o').textContent=speed.toFixed(1)+'×'};
+// pointer orbit + pinch
+const ptrs=new Map();let pinch0=0,dist0=0;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+ if(ptrs.size===2){const [a,b]=[...ptrs.values()];pinch0=Math.hypot(a.x-b.x,a.y-b.y);dist0=view.dist}});
+cv.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);
+ if(ptrs.size===1){view.az+=(e.clientX-p.x)*0.008;view.elev=Math.max(-0.2,Math.min(1.45,view.elev+(e.clientY-p.y)*0.006))}
+ p.x=e.clientX;p.y=e.clientY;
+ if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a.x-b.x,a.y-b.y);if(pinch0>0)view.dist=Math.max(cur.dist*0.35,Math.min(cur.dist*2,dist0*pinch0/d))}});
+const up=e=>{ptrs.delete(e.pointerId);pinch0=0};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+cv.addEventListener('wheel',e=>{e.preventDefault();view.dist=Math.max(cur.dist*0.35,Math.min(cur.dist*2,view.dist*(1+e.deltaY*0.001)))},{passive:false});
+function size(){const w=stage.clientWidth,h=stage.clientHeight;R.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix()}
+new ResizeObserver(()=>{size();render()}).observe(stage);
+function render(){const tg=cur.target;const c=Math.cos(view.elev);
+ cam.position.set(tg.x+view.dist*c*Math.cos(view.az),tg.y+view.dist*Math.sin(view.elev),tg.z+view.dist*c*Math.sin(view.az));cam.lookAt(tg);
+ cur.update(t);R.render(cur.sc,cam)}
+const reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;if(reduce){speed=0.5;document.getElementById('speed').value=0.5;document.getElementById('sp-o').textContent='0.5×'}
+let visible=true;document.addEventListener('visibilitychange',()=>{visible=!document.hidden;last=performance.now()});
+function loop(now){const dt=Math.min(0.1,(now-last)/1000);last=now;if(run&&visible)t+=dt*speed;if(visible)render();requestAnimationFrame(loop)}
+// initial
+(function(){const h=(location.hash||'').replace('#','');let k=h.replace(/-es$/,'');if(/-es$/.test(h))lang='es';if(!INFO[k])k='planet';size();select(k,true);fillText();requestAnimationFrame(loop)})();
+</script>
